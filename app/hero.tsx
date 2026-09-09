@@ -1,8 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUpRight, BedDouble, Menu, Star } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Menu, Star } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "./components/brand-logo";
+import { stays } from "./stays";
+
+const featuredStays = Object.values(stays).flat();
 
 const slides = [
   { src: "/images/stay-bedroom.webp", alt: "A sunlit bedroom at Kaia House" },
@@ -10,24 +15,18 @@ const slides = [
   { src: "/images/stay-courtyard.webp", alt: "A private suite opening to a garden" },
 ];
 
-const stays = [
-  { src: "/images/stay-courtyard.webp", type: "Garden Suite", location: "Uluwatu, Bali" },
-  { src: "/images/stay-bedroom.webp", type: "Loft Retreat", location: "Canggu, Bali" },
-  { src: "/images/stay-living.webp", type: "Ocean House", location: "Lombok, NTB" },
-];
-
-function ArrowButton({ label }: { label: string }) {
-  return <button className="arrow-button" type="button" aria-label={label}><ArrowUpRight size={16} strokeWidth={2.2} /></button>;
+function ArrowButton({ label, href }: { label: string; href: string }) {
+  return <Link className="arrow-button" href={href} aria-label={label}><ArrowUpRight size={16} strokeWidth={2.2} /></Link>;
 }
 
-function StayCard({ stay }: { stay: (typeof stays)[number] }) {
+function StayCard({ stay }: { stay: (typeof featuredStays)[number] }) {
   return (
     <article className="stay-card">
       <div className="stay-card-image">
-        <Image src={stay.src} alt={stay.type} fill sizes="(max-width: 720px) 88vw, 25vw" />
-        <ArrowButton label={`View ${stay.type}`} />
+        <Image src={stay.image} alt={stay.type} fill sizes="(max-width: 720px) 88vw, 25vw" />
+        <ArrowButton label={`Book ${stay.name}`} href={`/booking?stay=${stay.id}`} />
       </div>
-      <div className="stay-card-meta"><strong>{stay.type}</strong><span>{stay.location}</span></div>
+      <div className="stay-card-meta"><div><strong>{stay.type}</strong><span>{stay.location}</span></div><Link href={`/booking?stay=${stay.id}`}>Book now</Link></div>
     </article>
   );
 }
@@ -43,17 +42,17 @@ export function Hero() {
   return (
     <main className="page-shell">
       <header className="site-header">
-        <a className="brand" href="#" aria-label="Kaia home"><span className="brand-mark"><BedDouble size={18} strokeWidth={2.5} /></span><span>kaia</span></a>
+        <BrandLogo />
         <nav aria-label="Main navigation"><a href="#stays">Stays</a><a href="#story">Our story</a><a href="#journal">Journal</a></nav>
-        <div className="header-actions"><a className="text-link" href="#stays">Explore stays</a><a className="button button-dark" href="#contact">Book now <ArrowUpRight size={15} /></a><button className="menu-button" type="button" aria-label="Open menu"><Menu size={20} /></button></div>
+        <div className="header-actions"><a className="text-link" href="#stays">Explore stays</a><Link className="button button-dark" href="/booking">Book now <ArrowUpRight size={15} /></Link><button className="menu-button" type="button" aria-label="Open menu"><Menu size={20} /></button></div>
       </header>
 
       <section className="hero-grid" id="story">
         <div className="hero-copy">
-          <div className="rating"><Star size={16} fill="currentColor" /><span><strong>4.9</strong> guest rating</span></div>
+          <div className="rating"><Star size={25} fill="currentColor" /><span><strong>4.9</strong> guest rating</span></div>
           <h1>Find your<br />best stay.</h1>
           <p>Thoughtful spaces, unhurried mornings, and the kind of quiet you remember. Discover private stays made for slowing down.</p>
-          <div className="hero-actions"><a className="button button-light" href="#stays">View stays</a><a className="button button-dark" href="#contact">Start exploring <ArrowUpRight size={15} /></a></div>
+          <div className="hero-actions"><a className="button button-light" href="#stays">View stays</a><Link className="button button-dark" href={`/booking?stay=${featuredStays[activeSlide].id}`}>Book this stay <ArrowUpRight size={15} /></Link></div>
           <div className="trusted"><span>Trusted by travellers from</span><div><strong>Kinfolk</strong><strong>airbnb</strong><strong>Condé Nast</strong></div></div>
         </div>
 
@@ -66,8 +65,12 @@ export function Hero() {
       </section>
 
       <section className="stay-grid" id="stays" aria-label="Featured stays">
-        <StayCard stay={stays[0]} /><StayCard stay={stays[1]} /><StayCard stay={stays[2]} />
-        <article className="explore-card"><span className="eyebrow">Private stays, your pace</span><h2>A better way to find somewhere worth staying.</h2><a href="#contact">Explore all stays <ArrowUpRight size={16} /></a></article>
+        <StayCard stay={featuredStays[0]} />
+        <StayCard stay={featuredStays[1]} />
+        <article className="explore-card">
+          <div className="explore-copy"><span className="eyebrow">Private stays, your pace</span><h2>A better way to find somewhere worth staying.</h2><a href="#accommodation">Explore all stays <ArrowUpRight size={16} /></a></div>
+          <div className="explore-image"><Image src={featuredStays[2].image} alt={featuredStays[2].name} fill sizes="(max-width: 720px) 88vw, 25vw" /><ArrowButton label={`Book ${featuredStays[2].name}`} href={`/booking?stay=${featuredStays[2].id}`} /></div>
+        </article>
       </section>
     </main>
   );
