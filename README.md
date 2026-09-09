@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Homely
 
-## Getting Started
+Landing page dan sistem reservasi akomodasi berbasis Next.js. Pengunjung dapat memilih akomodasi, mengisi data booking, dan membayar melalui Midtrans Snap. Data booking dan perubahan status pembayaran disimpan di PostgreSQL dengan Drizzle ORM.
 
-First, run the development server:
+## Menjalankan project
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependency dengan `npm install`.
+2. Salin `.env.example` menjadi `.env.local`, lalu isi koneksi PostgreSQL dan kredensial Midtrans.
+3. Jalankan migrasi dengan `npm run db:migrate`.
+4. Jalankan aplikasi dengan `npm run dev`.
+5. Buka `http://localhost:3000`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `DATABASE_URL`: connection string PostgreSQL.
+- `MIDTRANS_SERVER_KEY`: Server Key Midtrans, hanya digunakan di server.
+- `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`: Client Key untuk Snap di browser.
+- `MIDTRANS_IS_PRODUCTION`: `false` untuk Sandbox atau `true` untuk Production.
+- `NEXT_PUBLIC_APP_URL`: alamat aplikasi untuk callback dan redirect.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Perintah
 
-## Learn More
+- `npm run dev`: menjalankan server development.
+- `npm run lint`: memeriksa kualitas kode.
+- `npm run build`: membuat build production.
+- `npm run db:generate`: membuat migrasi dari perubahan skema.
+- `npm run db:migrate`: menerapkan migrasi ke PostgreSQL.
+- `npm run db:studio`: membuka Drizzle Studio.
 
-To learn more about Next.js, take a look at the following resources:
+## Struktur utama
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `app`: halaman dan endpoint Next.js.
+- `db`: koneksi, skema, dan tipe database.
+- `drizzle`: file migrasi PostgreSQL.
+- `lib`: validasi booking dan integrasi layanan.
+- `public`: aset gambar dalam format WebP.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Verifikasi
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Jalankan `npm run lint` dan `npm run build` sebelum membuat pull request.
