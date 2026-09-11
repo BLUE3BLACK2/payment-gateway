@@ -19,6 +19,12 @@ import { FormEvent, useMemo, useState } from "react";
 import { formatPrice, type Stay } from "../stays";
 import { BrandLogo } from "../components/brand-logo";
 
+type PaymentSession = {
+  orderId: string;
+  snapToken: string;
+  redirectUrl: string;
+};
+
 function Field({
   label,
   children,
@@ -50,7 +56,9 @@ export function BookingForm({
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
   const [paymentState, setPaymentState] = useState<"idle" | "creating" | "paying">("idle");
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
@@ -58,9 +66,44 @@ export function BookingForm({
     return Math.max(1, Math.ceil(difference / 86400000));
   }, [checkIn, checkOut]);
 
+  const openPayment = (session: PaymentSession) => {
+    setError("");
+    setNotice("");
+
+    const statusUrl = `/booking/status?order_id=${encodeURIComponent(session.orderId)}`;
+    if (!window.snap) {
+      window.location.assign(session.redirectUrl);
+      return;
+    }
+
+    setPaymentState("paying");
+    window.snap.pay(session.snapToken, {
+      onSuccess: () => router.push(statusUrl),
+      onPending: () => {
+        setNotice("Pembayaran belum selesai. Anda dapat melanjutkannya tanpa membuat booking baru.");
+        setPaymentState("idle");
+      },
+      onError: () => {
+        setError("Pembayaran gagal diproses. Silakan coba kembali dengan booking yang sama.");
+        setPaymentState("idle");
+      },
+      onClose: () => {
+        setNotice("Jendela pembayaran ditutup. Data dan booking Anda tetap tersimpan selama 30 menit.");
+        setPaymentState("idle");
+      },
+    });
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (paymentSession) {
+      openPayment(paymentSession);
+      return;
+    }
+
     setError("");
+    setNotice("");
     setPaymentState("creating");
 
     const form = new FormData(event.currentTarget);
@@ -89,25 +132,9 @@ export function BookingForm({
         throw new Error(result.message ?? "Booking belum dapat dibuat");
       }
 
-      const statusUrl = `/booking/status?order_id=${encodeURIComponent(result.orderId)}`;
-      if (!window.snap) {
-        window.location.assign(result.redirectUrl);
-        return;
-      }
-
-      setPaymentState("paying");
-      window.snap.pay(result.snapToken, {
-        onSuccess: () => router.push(statusUrl),
-        onPending: () => router.push(statusUrl),
-        onError: () => {
-          setError("Pembayaran gagal diproses. Silakan coba kembali.");
-          setPaymentState("idle");
-        },
-        onClose: () => {
-          setError("Jendela pembayaran ditutup. Booking Anda ditahan selama 30 menit.");
-          setPaymentState("idle");
-        },
-      });
+      const session = result as PaymentSession;
+      setPaymentSession(session);
+      openPayment(session);
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -194,9 +221,10 @@ export function BookingForm({
               <strong>{formatPrice(stay.price * nights)}</strong>
             </div>
 
+            {notice && <div className="form-success" role="status"><ShieldCheck size={17} /><span><strong>Booking saved</strong>{notice}</span></div>}
             {error && <div className="form-error" role="alert">{error}</div>}
 
-            <button className="booking-submit" type="submit" disabled={paymentState !== "idle"}>{paymentState === "creating" ? "Preparing payment..." : paymentState === "paying" ? "Opening payment..." : "Continue to payment"} <ArrowRight size={17} /></button>
+            <button className="booking-submit" type="submit" disabled={paymentState !== "idle"}>{paymentState === "creating" ? "Preparing payment..." : paymentState === "paying" ? "Opening payment..." : paymentSession ? "Continue payment" : "Continue to payment"} <ArrowRight size={17} /></button>
             <p className="form-footnote"><ShieldCheck size={14} /> Your information is securely protected.</p>
           </form>
         </div>
