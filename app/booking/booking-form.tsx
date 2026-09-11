@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   BedDouble,
@@ -14,8 +15,9 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { formatPrice, type Stay } from "../stays";
 import { BrandLogo } from "../components/brand-logo";
 
@@ -24,6 +26,25 @@ type PaymentSession = {
   snapToken: string;
   redirectUrl: string;
 };
+
+const fieldLabels: Record<string, string> = {
+  checkIn: "check-in date",
+  checkOut: "check-out date",
+  firstName: "first name",
+  lastName: "last name",
+  email: "email address",
+  phone: "phone number",
+};
+
+function getFieldError(field: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement) {
+  const label = fieldLabels[field.name] ?? "required field";
+  if (field.validity.valueMissing) return `Please enter your ${label}.`;
+  if (field.validity.typeMismatch) return `Please enter a valid ${label}.`;
+  if (field.validity.tooShort) return `Your ${label} is too short.`;
+  if (field.validity.patternMismatch) return `Please check the format of your ${label}.`;
+  if (field.validity.rangeUnderflow) return `Please choose a valid ${label}.`;
+  return `Please check your ${label}.`;
+}
 
 function Field({
   label,
@@ -59,6 +80,13 @@ export function BookingForm({
   const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+
+  useEffect(() => {
+    if (!error) return;
+    const timeout = window.setTimeout(() => setError(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [error]);
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
@@ -99,6 +127,21 @@ export function BookingForm({
 
     if (paymentSession) {
       openPayment(paymentSession);
+      return;
+    }
+
+    const invalidField = Array.from(event.currentTarget.elements).find(
+      (element): element is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement =>
+        (element instanceof HTMLInputElement ||
+          element instanceof HTMLTextAreaElement ||
+          element instanceof HTMLSelectElement) &&
+        !element.validity.valid,
+    );
+
+    if (invalidField) {
+      setError(getFieldError(invalidField));
+      invalidField.focus();
+      invalidField.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -152,6 +195,13 @@ export function BookingForm({
         data-client-key={midtransClientKey}
         strategy="afterInteractive"
       />
+      {error && (
+        <div className="booking-error-toast" role="alert" aria-live="assertive">
+          <span className="booking-error-icon"><AlertCircle size={19} /></span>
+          <span><strong>Check your booking details</strong>{error}</span>
+          <button type="button" aria-label="Close error message" onClick={() => setError("")}><X size={16} /></button>
+        </div>
+      )}
       <section className="booking-shell">
         <aside className="booking-stay-panel">
           <div className="booking-brand-row">
@@ -199,20 +249,20 @@ export function BookingForm({
             <p>We’ll use these details to prepare your reservation.</p>
           </div>
 
-          <form className="booking-form" onSubmit={handleSubmit}>
+          <form className="booking-form" onSubmit={handleSubmit} noValidate>
             <div className="booking-form-grid">
-              <Field label="Check-in"><div className="input-wrap"><CalendarDays size={17} /><input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} required /></div></Field>
-              <Field label="Check-out"><div className="input-wrap"><CalendarDays size={17} /><input type="date" value={checkOut} min={checkIn} onChange={(event) => setCheckOut(event.target.value)} required /></div></Field>
+              <Field label="Check-in"><div className="input-wrap"><CalendarDays size={17} /><input name="checkIn" type="date" value={checkIn} min={today} onChange={(event) => setCheckIn(event.target.value)} required /></div></Field>
+              <Field label="Check-out"><div className="input-wrap"><CalendarDays size={17} /><input name="checkOut" type="date" value={checkOut} min={checkIn || today} onChange={(event) => setCheckOut(event.target.value)} required /></div></Field>
               <Field label="Guests" wide><div className="input-wrap"><Users size={17} /><select value={guests} onChange={(event) => setGuests(event.target.value)}>{Array.from({ length: stay.guests }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1} guest{index ? "s" : ""}</option>)}</select><ChevronDown className="select-chevron" size={16} /></div></Field>
             </div>
 
             <div className="form-divider"><span>Guest information</span></div>
 
             <div className="booking-form-grid">
-              <Field label="First name"><input name="firstName" type="text" placeholder="e.g. Alex" autoComplete="given-name" required /></Field>
-              <Field label="Last name"><input name="lastName" type="text" placeholder="e.g. Morgan" autoComplete="family-name" required /></Field>
+              <Field label="First name"><input name="firstName" type="text" placeholder="e.g. Alex" autoComplete="given-name" minLength={2} required /></Field>
+              <Field label="Last name"><input name="lastName" type="text" placeholder="e.g. Morgan" autoComplete="family-name" minLength={2} required /></Field>
               <Field label="Email address" wide><input name="email" type="email" placeholder="alex@example.com" autoComplete="email" required /></Field>
-              <Field label="Phone number" wide><div className="phone-input"><span>+62</span><input name="phone" type="tel" placeholder="812 3456 7890" autoComplete="tel" required /></div></Field>
+              <Field label="Phone number" wide><div className="phone-input"><span>+62</span><input name="phone" type="tel" placeholder="812 3456 7890" autoComplete="tel" pattern="[0-9 ]{8,20}" required /></div></Field>
               <Field label="Anything we should know? (optional)" wide><textarea name="notes" rows={3} placeholder="Arrival time, celebration, dietary needs..." /></Field>
             </div>
 
@@ -222,7 +272,6 @@ export function BookingForm({
             </div>
 
             {notice && <div className="form-success" role="status"><ShieldCheck size={17} /><span><strong>Booking saved</strong>{notice}</span></div>}
-            {error && <div className="form-error" role="alert">{error}</div>}
 
             <button className="booking-submit" type="submit" disabled={paymentState !== "idle"}>{paymentState === "creating" ? "Preparing payment..." : paymentState === "paying" ? "Opening payment..." : paymentSession ? "Continue payment" : "Continue to payment"} <ArrowRight size={17} /></button>
             <p className="form-footnote"><ShieldCheck size={14} /> Your information is securely protected.</p>
