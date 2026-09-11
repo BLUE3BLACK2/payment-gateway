@@ -1,4 +1,7 @@
+import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "drizzle-kit";
+
+loadEnvConfig(process.cwd());
 
 const migrationUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
 
