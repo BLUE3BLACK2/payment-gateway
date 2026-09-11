@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Script from "next/script";
 import {
   ArrowLeft,
   ArrowRight,
   BedDouble,
   CalendarDays,
-  Check,
   ChevronDown,
   MapPin,
   ShieldCheck,
@@ -15,15 +16,8 @@ import {
   Users,
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
-import type { Stay } from "../stays";
+import { formatPrice, type Stay } from "../stays";
 import { BrandLogo } from "../components/brand-logo";
-
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
 
 function Field({
   label,
@@ -42,11 +36,21 @@ function Field({
   );
 }
 
-export function BookingForm({ stay }: { stay: Stay }) {
+export function BookingForm({
+  stay,
+  midtransClientKey,
+  isProduction,
+}: {
+  stay: Stay;
+  midtransClientKey: string;
+  isProduction: boolean;
+}) {
+  const router = useRouter();
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
-  const [submitted, setSubmitted] = useState(false);
+  const [paymentState, setPaymentState] = useState<"idle" | "creating" | "paying">("idle");
+  const [error, setError] = useState("");
 
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 1;
@@ -54,13 +58,73 @@ export function BookingForm({ stay }: { stay: Stay }) {
     return Math.max(1, Math.ceil(difference / 86400000));
   }, [checkIn, checkOut]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitted(true);
+    setError("");
+    setPaymentState("creating");
+
+    const form = new FormData(event.currentTarget);
+    const firstName = String(form.get("firstName") ?? "").trim();
+    const lastName = String(form.get("lastName") ?? "").trim();
+    const phone = String(form.get("phone") ?? "").replace(/[^0-9]/g, "");
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accommodationId: stay.id,
+          guestName: `${firstName} ${lastName}`.trim(),
+          guestEmail: form.get("email"),
+          guestPhone: `+62${phone.replace(/^0/, "")}`,
+          checkIn,
+          checkOut,
+          guestCount: guests,
+          notes: form.get("notes"),
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "Booking belum dapat dibuat");
+      }
+
+      const statusUrl = `/booking/status?order_id=${encodeURIComponent(result.orderId)}`;
+      if (!window.snap) {
+        window.location.assign(result.redirectUrl);
+        return;
+      }
+
+      setPaymentState("paying");
+      window.snap.pay(result.snapToken, {
+        onSuccess: () => router.push(statusUrl),
+        onPending: () => router.push(statusUrl),
+        onError: () => {
+          setError("Pembayaran gagal diproses. Silakan coba kembali.");
+          setPaymentState("idle");
+        },
+        onClose: () => {
+          setError("Jendela pembayaran ditutup. Booking Anda ditahan selama 30 menit.");
+          setPaymentState("idle");
+        },
+      });
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Terjadi kesalahan. Silakan coba kembali.",
+      );
+      setPaymentState("idle");
+    }
   };
 
   return (
     <main className="booking-page">
+      <Script
+        src={isProduction ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js"}
+        data-client-key={midtransClientKey}
+        strategy="afterInteractive"
+      />
       <section className="booking-shell">
         <aside className="booking-stay-panel">
           <div className="booking-brand-row">
@@ -130,9 +194,9 @@ export function BookingForm({ stay }: { stay: Stay }) {
               <strong>{formatPrice(stay.price * nights)}</strong>
             </div>
 
-            {submitted && <div className="form-success" role="status"><Check size={18} /><span><strong>Your stay details are ready.</strong>Payment will be completed in the next step.</span></div>}
+            {error && <div className="form-error" role="alert">{error}</div>}
 
-            <button className="booking-submit" type="submit">Continue to payment <ArrowRight size={17} /></button>
+            <button className="booking-submit" type="submit" disabled={paymentState !== "idle"}>{paymentState === "creating" ? "Preparing payment..." : paymentState === "paying" ? "Opening payment..." : "Continue to payment"} <ArrowRight size={17} /></button>
             <p className="form-footnote"><ShieldCheck size={14} /> Your information is securely protected.</p>
           </form>
         </div>

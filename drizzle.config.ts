@@ -1,7 +1,9 @@
 import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL belum dikonfigurasi");
+const migrationUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL;
+
+if (!migrationUrl) {
+  throw new Error("DATABASE_MIGRATION_URL atau DATABASE_URL belum dikonfigurasi");
 }
 
 export default defineConfig({
@@ -9,6 +11,6 @@ export default defineConfig({
   schema: "./db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: migrationUrl,
   },
 });

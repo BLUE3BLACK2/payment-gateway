@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { getServerEnv } from "@/lib/env";
+import { getDatabaseUrl } from "@/lib/env";
 import * as schema from "./schema";
 
 const globalDatabase = globalThis as typeof globalThis & {
@@ -10,7 +10,7 @@ const globalDatabase = globalThis as typeof globalThis & {
 const pool =
   globalDatabase.databasePool ??
   new Pool({
-    connectionString: getServerEnv().DATABASE_URL,
+    connectionString: getDatabaseUrl(),
   });
 
 if (process.env.NODE_ENV !== "production") {

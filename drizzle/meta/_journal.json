@@ -8,6 +8,13 @@
       "when": 1788927635172,
       "tag": "0000_careful_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789105664356,
+      "tag": "0001_free_microchip",
+      "breakpoints": true
     }
   ]
 }

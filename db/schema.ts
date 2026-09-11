@@ -45,6 +45,8 @@ export const bookings = pgTable("bookings", {
   midtransTransactionId: varchar("midtrans_transaction_id", { length: 64 }),
   snapToken: text("snap_token"),
   snapRedirectUrl: text("snap_redirect_url"),
+  notes: text("notes"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   paidAt: timestamp("paid_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

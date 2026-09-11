@@ -6,6 +6,7 @@ export const bookingInputSchema = z
     guestName: z.string().trim().min(2).max(120),
     guestEmail: z.email(),
     guestPhone: z.string().trim().min(8).max(32),
+    notes: z.string().trim().max(1000).optional(),
     checkIn: z.iso.date(),
     checkOut: z.iso.date(),
     guestCount: z.coerce.number().int().min(1).max(20),
